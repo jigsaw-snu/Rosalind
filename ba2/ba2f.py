@@ -1,7 +1,6 @@
 import sys
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 
 
 '''
@@ -45,9 +44,9 @@ def pssm_builder(motifs: list) -> pd.DataFrame:
     for i in range(len(motifs[0])):
         for base in list('ACGT'):
             try:
-                pssm[i][base] = (seq_df[i].value_counts()[base]+1) / (len(motifs[0])+1)
+                pssm[i][base] = (seq_df[i].value_counts()[base]+1) / (len(motifs)+4)
             except:
-                pssm[i][base] = (1.0) / (len(motifs[0])+1)
+                pssm[i][base] = (1.0) / (len(motifs)+4)
 
     return pssm
 
@@ -56,17 +55,20 @@ def pssm_builder(motifs: list) -> pd.DataFrame:
     <single_motif_finder>
     finds motif from single DNA sequence based on given profile matrix
     helper function for motif_finder
+    the score used in this function is different from the score used in
+    evaluting motifs
 '''
-def single_motif_finder(DNA: str, k: int, pssm: pd.DataFrame) -> str:
-    kmers = [DNA[i:i+k] for i in range(len(DNA)-k+1)]
+def single_motif_finder(dna: str, k: int, pssm: pd.DataFrame) -> str:
+    kmers = [dna[i:i+k] for i in range(len(dna)-k+1)]
 
     best_score = 0
     motif = kmers[0]
+
     for kmer in kmers:
         score = 1
 
         for i in range(k):
-            score *= pssm[i][kmer[i]]
+            score *= pssm[i][kmer[i]]  # score = product of maximum probs
 
         if best_score < score:
             best_score = score
@@ -88,16 +90,16 @@ def motif_finder(DNA: list, k: int, pssm: pd.DataFrame) -> list:
 '''
     <score_motifs>
     calculate scores of given motifs using shannon entropy
+    shannon entropy = -sum(sum of P*logP per base for each column)
+    lower is better (which refers converging)
 '''
 def score_motifs(motifs: list) -> float:
     # build profile matrix
     pssm = pssm_builder(motifs)
 
-    score = 0
-    for i in range(len(motifs[0])):
-        score += pssm[i].max() * np.log(pssm[i].max())
+    score = -sum([sum([pssm[i][base]*np.log2(pssm[i][base]) for base in list('ACGT')]) for i in range(len(motifs[0]))])
 
-    return -score
+    return score
 
 
 '''
@@ -106,25 +108,33 @@ def score_motifs(motifs: list) -> float:
 '''
 def stochastic_motif_search(DNA: list, k: int, t: int) -> str:
     # all kmer list of each DNA sequence
-    kmers = [[dna[i:i+k] for i in range(len(dna)-k+1)] for dna in DNA]
+    total_kmers = [[dna[i:i+k] for i in range(len(dna)-k+1)] for dna in DNA]
 
-    # create random index
-    random_index = np.random.randint(0, len(DNA[0])-k+1, t).tolist()
+    # create random index ; notice that each DNA sequence might has different size
+    random_index = [int(np.random.randint(0, len(kmers), 1)) for kmers in total_kmers]
+    #random_index = np.random.randint(0, len(DNA[0])-k+1, t).tolist()
 
-    # initialize best_motifs with random index 
-    best_motifs = motifs = [kmer[random_index.pop()] for kmer in kmers]
+    # initialize best_motifs with random index
+    best_motifs = curr_motifs = [kmers[random_index.pop()] for kmers in total_kmers[::-1]]
 
     cnt = 0
     while True:
         cnt += 1
+        #print(cnt)
 
-        pssm = pssm_builder(motifs)
-        motifs = motif_finder(motifs, k, pssm)
+        print('best motifs :', best_motifs)
+        pssm = pssm_builder(curr_motifs)
+        print('======\nPSSM\n======\n', pssm, sep='')
+        curr_motifs = motif_finder(DNA, k, pssm)
+        print('='*70)
+        print('current motifs :', curr_motifs)
+        print(score_motifs(best_motifs), score_motifs(curr_motifs), sep='\t')
+        print('\n\n')
 
-        if cnt == 1000:
+        if cnt == 10 or score_motifs(best_motifs) < score_motifs(curr_motifs):
             return ('\n').join(best_motifs)
         else:
-            best_motifs = motifs
+            best_motifs = curr_motifs
             continue
 
 
