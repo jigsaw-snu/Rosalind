@@ -15,7 +15,11 @@ def InputParser(input_path: str) -> dict:
 
         # second line implies for list of available coins
         line = file.readline().rstrip()
-        params['coins'] = list(map(int, line.split(',')))
+
+        if ',' in line:
+            params['coins'] = list(map(int, line.split(',')))
+        else:
+            params['coins'] = list(map(int, line.split()))
 
     return params
 
