@@ -59,21 +59,26 @@ def PathSelector(src: int, dst: int, weight: list) -> list:
     nodes = [Node()] * (dst+1)  # to make list index same as iterater
 
     for i in range(src+1, dst+1):
-        print('index :', i)
+        print('node_vals :', [node.max_val for node in nodes])
+        print('\nindex :', i)
         innodes = [x for x in weight if x[1] == i]
-        print(nodes[innodes[0][0]].max_val)
+        print('innodes :', innodes)
+        print('src-',innodes[0][0], ' : ', nodes[innodes[0][0]].max_val, sep='')
+        print('dst-', innodes[0][1], ' : ', nodes[innodes[0][1]].max_val, sep='')
 
         if len(innodes) < 1:
             continue
 
         # score = max(prev_node scores + weights)
+        print('innode_idx :', [(innode[0], innode[1]) for innode in innodes])
         innodes_val = [nodes[innode[0]].max_val + innode[2] for innode in innodes]
 
-        print(innodes)
-        print(innodes_val)
-
+        print('vals :', innodes_val)
+        print(nodes[i].max_val)
         nodes[i].max_val = max(innodes_val)
         nodes[i].innode = innodes[innodes_val.index(nodes[i].max_val)][0]
+        print('node_vals :', [node.max_val for node in nodes])
+        print(nodes[i].max_val)
 
     res = [
         nodes[dst].max_val,
