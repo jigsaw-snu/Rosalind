@@ -83,8 +83,8 @@ def PathSelector(src: int, dst: int, weight: list) -> list:
         nodes[i].innode = innodes[innodes_val.index(nodes[i].max_val)][0]
         print('node_vals :', [node.max_val for node in nodes])
         print('max_val of nodes[i]', nodes[i].max_val)
-
-    print('\nnode path :', [str(node.innode) for node in nodes[src:]], '\n')
+    
+    print('\nnode path :', [str(node.innode) for node in nodes[src+2:]], '\n')
     res = [
         nodes[dst].max_val,
         '->'.join([str(node.innode) for node in nodes[src:]])
