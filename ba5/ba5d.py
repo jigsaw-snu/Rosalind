@@ -56,7 +56,11 @@ def InputParser(file_path: str) -> dict:
     Select Best Path from source node to sink node
 '''
 def PathSelector(src: int, dst: int, weight: list) -> list:
-    nodes = [Node()] * (dst+1)  # to make list index same as iterater
+    # add different Node objects to nodes list
+    # make list index same as iterator below
+    nodes = []
+    for _ in range(dst+1):
+        nodes.append(Node())
 
     for i in range(src+1, dst+1):
         print('node_vals :', [node.max_val for node in nodes])
@@ -74,12 +78,13 @@ def PathSelector(src: int, dst: int, weight: list) -> list:
         innodes_val = [nodes[innode[0]].max_val + innode[2] for innode in innodes]
 
         print('vals :', innodes_val)
-        print(nodes[i].max_val)
+        print('max_val of nodes[i] (prev) :', nodes[i].max_val)
         nodes[i].max_val = max(innodes_val)
         nodes[i].innode = innodes[innodes_val.index(nodes[i].max_val)][0]
         print('node_vals :', [node.max_val for node in nodes])
-        print(nodes[i].max_val)
+        print('max_val of nodes[i]', nodes[i].max_val)
 
+    print('\nnode path :', [str(node.innode) for node in nodes[src:]], '\n')
     res = [
         nodes[dst].max_val,
         '->'.join([str(node.innode) for node in nodes[src:]])
