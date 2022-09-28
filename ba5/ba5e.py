@@ -58,11 +58,35 @@ def InputParser(file_path: str) -> dict:
 '''
 def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
     score_matrix = np.zeros(shape=(len(sequence[0])+1, len(sequence[1])+1))
-    print(score_matrix)
 
-    # first row and first column is zero padded
+    # Don't' forget to initialize first row and first column  with gap penalty
+    score_matrix[0, :] = [0 - i*penalty for i in range(len(sequence[1])+1)]
+    score_matrix[:, 0] = [0 - i*penalty for i in range(len(sequence[0])+1)]
+
+    #print(score_matrix, '\n')
+
+    # make sure that you need to store backtracking info in matrix not a list
+    backtrack = np.zeros(shape=(len(sequence[0])+1, len(sequence[1])+1))
+
     for i in range(1, len(sequence[0])+1):
         for j in range(1, len(sequence[1])+1):
+            max_score = max([
+                score_matrix[i-1, j-1] + \
+                    blosum[sequence[0][i-1]][sequence[1][j-1]],
+                score_matrix[i-1, j] - penalty,
+                score_matrix[i, j-1] - penalty
+            ])
+
+            score_matrix[i, j] = max_score
+
+            if max_score == score_matrix[i-1, j-1] + \
+                    blosum[sequence[0][i-1]][sequence[1][j-1]]:
+                backtrack[i, j] = 3  # let 3 as diagonal movement
+            elif max_score == score_matrix[i-1, j] - penalty:
+                backtrack[i, j] = 2  # let 2 as down movement
+            elif max_score == score_matrix[i, j-1] - penalty:
+                backtrack[i, j] = 1  # let 1 as right movement
+
             score_matrix[i, j] = max([
                 score_matrix[i-1, j-1] + \
                     blosum[sequence[0][i-1]][sequence[1][j-1]],
@@ -70,11 +94,54 @@ def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
                 score_matrix[i, j-1] - penalty
             ])
 
-    print(score_matrix)
+    #print(score_matrix, '\n')
+    #print(backtrack, '\n')
+
+    i = len(sequence[0])
+    j = len(sequence[1])
+    res = [int(score_matrix[i, j]), '', '']
+
+
+    # Backtracking
+    # remember sequence[0] is row, and sequence[1] is column
+    while i >= 0 and j >= 0:
+        # Handling corner case
+        if not i and j:  # i is 0
+            res[1] += '-'
+            res[2] += sequence[1][j-1]
+            break
+
+        elif i and not j :  # j is 0
+            res[1] += sequence[0][i-1]
+            res[2] += '-'
+            break
+
+        if backtrack[i, j] == 3:  # diagonal : match or mismatch
+            res[1] += sequence[0][i-1]
+            res[2] += sequence[1][j-1]
+            i -= 1
+            j -= 1
+
+        elif backtrack[i, j] == 2:  # down : gap in sequence[1]
+            res[1] += sequence[0][i-1]
+            res[2] += '-'
+            i -= 1
+
+        elif backtrack[i, j] == 1:  # right : gap in sequence[0]
+            res[1] += '-'
+            res[2] += sequence[1][j-1]
+            j -= 1
+
+    res[1] = res[1][::-1]
+    res[2] = res[2][::-1]
+
+    return res
+
 
 if __name__ == '__main__':
     blosum = BlosumParser(sys.argv[2])
     params = InputParser(sys.argv[1])
     align = GlobalAligner(params['sequence'], blosum = blosum, penalty=5)
 
-   # print(align[0], align[1], sep='\n')
+    #print(params['sequence'][0], params['sequence'][1], sep='\n')
+    print(align[0], align[1], align[2], sep='\n')
