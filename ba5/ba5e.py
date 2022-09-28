@@ -1,5 +1,4 @@
 import sys, re
-import pandas as pd
 import numpy as np
 
 
@@ -7,7 +6,7 @@ import numpy as np
     <BlosumParser>
     Read Blosum matrix in txt form and save into dataframe form
 '''
-def BlosumParser(blosum_path: str) -> pd.DataFrame:
+def BlosumParser(blosum_path: str) -> list:
     contents = []
     idx = []
 
@@ -27,9 +26,7 @@ def BlosumParser(blosum_path: str) -> pd.DataFrame:
 
             contents.append(list(map(int, line.split()[1:])))
 
-    res = pd.DataFrame(contents, columns=idx, index=idx)
-
-    return res
+    return [idx, np.array(contents)]
 
 
 '''
@@ -56,7 +53,10 @@ def InputParser(file_path: str) -> dict:
     <GlobalAligner>
     Find global alignment between two given sequences
 '''
-def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
+def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
+    blosum = blosum_info[1]  # BLOSUM matrix
+    b_idx = dict((v, k) for (k, v) in enumerate(blosum_info[0]))
+
     score_matrix = np.zeros(shape=(len(sequence[0])+1, len(sequence[1])+1))
 
     # Don't' forget to initialize first row and first column  with gap penalty
@@ -72,7 +72,7 @@ def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
         for j in range(1, len(sequence[1])+1):
             max_score = max([
                 score_matrix[i-1, j-1] + \
-                    blosum[sequence[0][i-1]][sequence[1][j-1]],
+                    blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]],
                 score_matrix[i-1, j] - penalty,
                 score_matrix[i, j-1] - penalty
             ])
@@ -80,7 +80,7 @@ def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
             score_matrix[i, j] = max_score
 
             if max_score == score_matrix[i-1, j-1] + \
-                    blosum[sequence[0][i-1]][sequence[1][j-1]]:
+                    blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]]:
                 backtrack[i, j] = 3  # let 3 as diagonal movement
             elif max_score == score_matrix[i-1, j] - penalty:
                 backtrack[i, j] = 2  # let 2 as down movement
@@ -89,7 +89,7 @@ def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
 
             score_matrix[i, j] = max([
                 score_matrix[i-1, j-1] + \
-                    blosum[sequence[0][i-1]][sequence[1][j-1]],
+                    blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]],
                 score_matrix[i-1, j] - penalty,
                 score_matrix[i, j-1] - penalty
             ])
@@ -114,6 +114,9 @@ def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
         elif i and not j :  # j is 0
             res[1] += sequence[0][i-1]
             res[2] += '-'
+            break
+
+        elif not i and not j:  # if both i and j are 0, end this loop
             break
 
         if backtrack[i, j] == 3:  # diagonal : match or mismatch
@@ -141,7 +144,7 @@ def GlobalAligner(sequence: list, blosum: pd.DataFrame, penalty: int) -> list:
 if __name__ == '__main__':
     blosum = BlosumParser(sys.argv[2])
     params = InputParser(sys.argv[1])
-    align = GlobalAligner(params['sequence'], blosum = blosum, penalty=5)
+    align = GlobalAligner(params['sequence'], blosum_info = blosum, penalty=5)
 
     #print(params['sequence'][0], params['sequence'][1], sep='\n')
     print(align[0], align[1], align[2], sep='\n')
