@@ -1,10 +1,30 @@
-import sys
+import sys, re
 import pandas as pd
 
 
-''''''
-def BlosumParser(blossum_path: str) -> pd.DataFrame:
-    blossum = pd.DataFrame()
+'''
+    <BlosumParser>
+    Read Blosum matrix in txt form and save into dataframe form
+'''
+def BlosumParser(blosum_path: str) -> pd.DataFrame:
+    blosum = []
+    idx = []
+    
+    with open(blosum_path, 'r') as blosum:
+        while True:
+            line = blosum.readline().strip()
+
+            if not line:
+                break
+            
+            if not re.findall(r'\d+', line):
+                idx += line
+            
+            blosum.append(list(map(int, line[1:]))
+        
+    res = pd.DataFrame(blosum, columns=idx, index=idx)
+
+    return res
 
 
 '''
@@ -26,7 +46,12 @@ def InputParser(file_path: str) -> dict:
 
     return params
 
+'''
+'''
+def GlobalAligner(seq1: str, seq2: str, blosum: pd.DataFrame) -> list:
+    pass
 
 
 if __name__ == '__main__':
+    blossum = BlosumParser(sys.argv[2])
     params = InputParser(sys.argv[1])
