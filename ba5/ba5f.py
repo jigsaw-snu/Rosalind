@@ -1,6 +1,5 @@
-import sys, re
+import sys, re, time
 import numpy as np
-
 
 '''
     <PAMParser>
@@ -70,22 +69,29 @@ def LocalAligner(sequence: list, pam: list, penalty: int) -> list:
     #
     # remember row corresponds to seqeunce[0] and
     # column corresponds to sequence[1]
+   
+    max_init = 0  # initializaing maximum value
+    max_loc = (0, 0)  # initializing location of maximum value
+    
     for i in range(1, len(sequence[0])+1):
         for j in range(1, len(sequence[1])+1):
-            # diagonal movement (match or mismatch)
+            # diagonal movement (match or mismatch) --> prev_score + PAM_score (match / mismatch)
             diag = score_matrix[i-1, j-1] + \
                 p_mat[p_idx[sequence[0][i-1]], p_idx[sequence[1][j-1]]]
 
-            # right movement (gap in sequence[0])
-            right = score_matrix[i, j-1] + \
-                p_mat[p_idx[sequence[0][i-1]], p_idx[sequence[1][j-1]]]
+            # right movement (gap in sequence[0]) --> prev_score + indel_penalty
+            right = score_matrix[i, j-1] - penalty
 
-            # down movement (gap in sequence[1])
-            down = score_matrix[i-1, j] + \
-                p_mat[p_idx[sequence[0][i-1]], p_idx[sequence[1][j-1]]]
+            # down movement (gap in sequence[1]) --> prev_score + indel_penalty
+            down = score_matrix[i-1, j] - penalty
 
+            # 0 is crucial in local alignment
             max_score = max([0, diag, right, down])
             score_matrix[i, j] = max_score
+
+            if max_score > max_init:
+                max_init = max_score
+                max_loc = (i, j)
 
             if max_score == 0:
                 continue
@@ -99,15 +105,35 @@ def LocalAligner(sequence: list, pam: list, penalty: int) -> list:
             elif max_score == down:
                 backtrace[i, j] = 1  # let 1 as down movement
 
-    print(score_matrix, '\n')
-    print(backtrace, '\n')
+    #print(score_matrix, '\n')
+    #print(backtrace, '\n')
+    #print(max_init, max_loc, '\n')
 
     # Backtracing
-    res = []
+    res = ['', '', int(max_init)]
 
-    i = len(sequence[0])
-    j = len(sequence[1])
+    i, j = max_loc
 
+    while i >= 0 and j >= 0 and backtrace[i, j] != 0:
+        #print('i:', i, 'j:', j, 'backtrace:', backtrace[i, j])
+        #time.sleep(0.5)
+        if backtrace[i, j] == 3:  # diagonal movement : match or mismatch
+            res[0] += sequence[0][i-1]
+            res[1] += sequence[1][j-1]
+            i -= 1
+            j -= 1
+
+        elif backtrace[i, j] == 2:  # right movement : gap in sequence[0]
+            res[0] += '-'
+            res[1] += sequence[1][j-1]
+            j -= 1
+
+        elif backtrace[i, j] == 1:  # down movement : gap in sequence[1]
+            res[0] += sequence[0][i-1]
+            res[1] += '-'
+            i -= 1
+
+    return res
 
 
 if __name__ == '__main__':
@@ -117,4 +143,5 @@ if __name__ == '__main__':
     params = InputParser(sys.argv[1])
     #print(params['sequence'], '\n')
 
-    LocalAligner(params['sequence'], [p_idx, pam], 5)
+    aligned = LocalAligner(params['sequence'], [p_idx, pam], 5)
+    print(aligned[2], aligned[0][::-1], aligned[1][::-1], sep='\n')
