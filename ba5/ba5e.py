@@ -94,8 +94,8 @@ def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
                 score_matrix[i, j-1] - penalty
             ])
 
-    #print(score_matrix, '\n')
-    #print(backtrack, '\n')
+    print(score_matrix, '\n')
+    print(backtrack, '\n')
 
     i = len(sequence[0])
     j = len(sequence[1])

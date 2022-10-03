@@ -133,6 +133,8 @@ def LocalAligner(sequence: list, pam: list, penalty: int) -> list:
             res[1] += '-'
             i -= 1
 
+    print(backtrace)
+
     return res
 
 
