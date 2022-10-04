@@ -69,10 +69,10 @@ def LocalAligner(sequence: list, pam: list, penalty: int) -> list:
     #
     # remember row corresponds to seqeunce[0] and
     # column corresponds to sequence[1]
-   
+
     max_init = 0  # initializaing maximum value
     max_loc = (0, 0)  # initializing location of maximum value
-    
+
     for i in range(1, len(sequence[0])+1):
         for j in range(1, len(sequence[1])+1):
             # diagonal movement (match or mismatch) --> prev_score + PAM_score (match / mismatch)
