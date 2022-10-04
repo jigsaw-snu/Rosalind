@@ -130,6 +130,8 @@ class Aligner:
                 self.down = self.score_matrix[i-1, j] - self.penalty
                 self.right = self.score_matrix[i, j-1] - self.penalty
 
+                print(self.diag, self.down, self.right)
+
                 self.max_score = \
                     max([
                         # match or mismatch --> diagonal movement
@@ -211,7 +213,9 @@ if __name__ == '__main__':
     print(aligned_gl[0], '\n'.join(aligned_gl[1]), sep='\n')
     print('\n')
 
+'''
     # Test Local Alignment
     aligner_lc = Aligner('MEANLY', 'PENALTY', sub_mat_info_lc, 5)
     aligned_lc = aligner_lc.LocalAligner()
     print(aligned_lc[0], '\n'.join(aligned_lc[1]), sep='\n')
+'''
