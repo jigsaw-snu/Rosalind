@@ -63,7 +63,7 @@ def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
     score_matrix[0, :] = [0 - i*penalty for i in range(len(sequence[1])+1)]
     score_matrix[:, 0] = [0 - i*penalty for i in range(len(sequence[0])+1)]
 
-    #print(score_matrix, '\n')
+    # print(score_matrix, '\n')
 
     # make sure that you need to store backtracking info in matrix not a list
     backtrack = np.zeros(shape=(len(sequence[0])+1, len(sequence[1])+1))
@@ -71,9 +71,11 @@ def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
     for i in range(1, len(sequence[0])+1):
         for j in range(1, len(sequence[1])+1):
             max_score = max([
-                score_matrix[i-1, j-1] + \
-                    blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]],
+                score_matrix[i-1, j-1] +
+                blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]],
+
                 score_matrix[i-1, j] - penalty,
+
                 score_matrix[i, j-1] - penalty
             ])
 
@@ -88,19 +90,20 @@ def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
                 backtrack[i, j] = 1  # let 1 as right movement
 
             score_matrix[i, j] = max([
-                score_matrix[i-1, j-1] + \
-                    blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]],
+                score_matrix[i-1, j-1] +
+                blosum[b_idx[sequence[0][i-1]], b_idx[sequence[1][j-1]]],
+
                 score_matrix[i-1, j] - penalty,
+
                 score_matrix[i, j-1] - penalty
             ])
 
-    print(score_matrix, '\n')
-    print(backtrack, '\n')
+    # print(score_matrix, '\n')
+    # print(backtrack, '\n')
 
     i = len(sequence[0])
     j = len(sequence[1])
     res = [int(score_matrix[i, j]), '', '']
-
 
     # Backtracking
     # remember sequence[0] is row, and sequence[1] is column
@@ -111,7 +114,7 @@ def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
             res[2] += sequence[1][j-1]
             break
 
-        elif i and not j :  # j is 0
+        elif i and not j:  # j is 0
             res[1] += sequence[0][i-1]
             res[2] += '-'
             break
@@ -144,7 +147,7 @@ def GlobalAligner(sequence: list, blosum_info: list, penalty: int) -> list:
 if __name__ == '__main__':
     blosum = BlosumParser(sys.argv[2])
     params = InputParser(sys.argv[1])
-    align = GlobalAligner(params['sequence'], blosum_info = blosum, penalty=5)
+    align = GlobalAligner(params['sequence'], blosum_info=blosum, penalty=5)
 
-    #print(params['sequence'][0], params['sequence'][1], sep='\n')
+    # print(params['sequence'][0], params['sequence'][1], sep='\n')
     print(align[0], align[1], align[2], sep='\n')
