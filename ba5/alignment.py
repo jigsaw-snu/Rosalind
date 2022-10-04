@@ -1,5 +1,6 @@
 import sys, re
 import numpy as np
+from copy import deepcopy
 
 
 '''
@@ -31,6 +32,20 @@ def SubMatParser(sub_mat_path: str) -> list:
 
 
 '''
+    <InputParser>
+    Parse input file and save into python object
+    We consider 2 sequences are given in input file
+'''
+def InputParser(input_path: str) -> list:
+    ret = []
+
+    with open(input_path, 'r') as file:
+        ret += [file.readline().rstrip() for _ in range(2)]
+
+    return ret
+
+
+'''
     <Class : Aligner>
     @variables:
         - seq1, seq2 : target sequences
@@ -40,22 +55,36 @@ def SubMatParser(sub_mat_path: str) -> list:
         - backtrace
 
     @functions:
+        - BacktrackGlobal
+        - BacktrackLocal
         - GlobalAligner
         - LocalAligner
 '''
 class Aligner:
+    '''
+        <Constructor>
+        initialize class member variables
+
+        ** remember using deepcopy to assign same array to different variable
+    '''
     def __init__(self, seq1: str, seq2: str, sub_mat_info: list, penalty: int):
         # prepare alignment
         self.seq1, self.seq2 = seq1, seq2
         self.sub_mat_idx = dict((v, k) for (k, v) in enumerate(sub_mat_info[0]))
         self.sub_matrix = sub_mat_info[1]  # np.array
         self.penalty = penalty
-        self.score_matrix = self.backtrace = \
+        self.score_matrix = \
             np.zeros(shape=(len(self.seq1)+1, len(self.seq2)+1))
+        self.backtrace = deepcopy(self.score_matrix)
 
 
+    '''
+        <BacktrackGlobal>
+        Global Alignment needs to map sequences from 'end to end'
+        You should handle edge cases, unless you'll get incomplete alignment result
+    '''
     def BacktrackGlobal(self) -> list:
-        ret = [self.max_score ,['', '']]
+        ret = [int(self.max_score) ,['', '']]
 
         i = len(self.seq1)
         j = len(self.seq2)
@@ -67,15 +96,27 @@ class Aligner:
                 i -= 1
                 j -= 1
 
-            if self.backtrace[i, j] == 2:  # down movement
+            elif self.backtrace[i, j] == 2:  # down movement
                 ret[1][0] += self.seq1[i-1]
                 ret[1][1] += '-'
                 i -= 1
 
-            if self.backtrace[i, j] == 1:  # right movement
+            elif self.backtrace[i, j] == 1:  # right movement
                 ret[1][0] += '-'
                 ret[1][1] += self.seq2[j-1]
                 j -= 1
+
+        # handle edge cases : (i == 0 and j != 0) or (i != 0 and j == 0)
+        while i != 0 or j != 0:
+            if i == 0 and j != 0:
+                ret[1][0] += '-'
+                ret[1][1] += self.seq2[j-1]
+                j -= 1
+
+            elif i != 0 and j == 0:
+                ret[1][0] += self.seq1[i-1]
+                ret[1][1] += '-'
+                i -= 1
 
         ret[1][0] = ret[1][0][::-1]
         ret[1][1] = ret[1][1][::-1]
@@ -83,11 +124,16 @@ class Aligner:
         return ret
 
 
-    def BacktrackLocal(self) -> list:
-        ret = [self.max_score, []]
+    '''
+        <BacktrackLocal>
+        Local Alignment should start backtracking from max score indices
+        You don't need to handle edge cases, since it's not aligning end to end
+    '''
+    def BacktrackLocal(self, cur_max_score: int, max_score_idx: list) -> list:
+        ret = [int(cur_max_score), ['', '']]
 
-        i = len(self.seq1)
-        j = len(self.seq2)
+        # unlike global alignment, local alignment backtracks from index of max score
+        i, j = max_score_idx
 
         while i > 0 and j > 0 and self.backtrace[i, j] != 0:
             if self.backtrace[i, j] == 3:  # diagonal movement
@@ -96,12 +142,12 @@ class Aligner:
                 i -= 1
                 j -= 1
 
-            if self.backtrace[i, j] == 2:  # down movement
+            elif self.backtrace[i, j] == 2:  # down movement
                 ret[1][0] += self.seq1[i-1]
                 ret[1][1] += '-'
                 i -= 1
 
-            if self.backtrace[i, j] == 1:  # right movement
+            elif self.backtrace[i, j] == 1:  # right movement
                 ret[1][0] += '-'
                 ret[1][1] += self.seq2[j-1]
                 j -= 1
@@ -112,6 +158,10 @@ class Aligner:
         return ret
 
 
+    '''
+        <GlobalAligner>
+        You must initialize first row and column with gap penalty
+    '''
     def GlobalAligner(self) -> list:
         # global alignment must initialize first row/col with gap penalty
         self.score_matrix[0, :] = \
@@ -129,8 +179,6 @@ class Aligner:
                                 ]
                 self.down = self.score_matrix[i-1, j] - self.penalty
                 self.right = self.score_matrix[i, j-1] - self.penalty
-
-                print(self.diag, self.down, self.right)
 
                 self.max_score = \
                     max([
@@ -153,13 +201,23 @@ class Aligner:
                 elif self.max_score == self.right:
                     self.backtrace[i, j] = 1  # let 1 denotes right movement
 
-        print(self.score_matrix, '\n')
+                # print(self.score_matrix, self.backtrace, '\n', sep='\n')
 
         return self.BacktrackGlobal()
 
 
+    '''
+        <LocalAligner>
+        You don't have to initialize first row and column with gap penalty,
+        since it'll automatically select 0 for max value in next cell
+
+        Remember to save max score and max score index
+    '''
     def LocalAligner(self) -> list:
         # fill out score matrix
+        # also, max score index must be saved
+        cur_max_score = 0
+        max_score_idx = [len(self.seq1)+1, len(self.seq2)+1]
         for i in range(1, len(self.seq1)+1):
             for j in range(1, len(self.seq2)+1):
                 self.diag = self.score_matrix[i-1, j-1] + \
@@ -182,6 +240,13 @@ class Aligner:
                         self.right
                     ])
 
+                self.score_matrix[i, j] = self.max_score
+
+                if self.max_score > cur_max_score:
+                    cur_max_score = self.max_score
+                    max_score_idx = [i, j]
+
+                # save backtracking info
                 if self.max_score == 0:
                     continue
 
@@ -194,28 +259,22 @@ class Aligner:
                 elif self.max_score == self.right:
                     self.backtrace[i, j] = 1  # let 1 denotes right movement
 
-        print(self.score_matrix, '\n')
+                # print(self.score_matrix, self.backtrace, '\n', sep='\n')
 
-        return self.BacktrackLocal()
+        return self.BacktrackLocal(cur_max_score, max_score_idx)
 
 
 if __name__ == '__main__':
-    sub_mat_info_gl = SubMatParser(sys.argv[1])  # BLOSUM62
-    sub_mat_info_lc = SubMatParser(sys.argv[2])  # PAM250
-    print(sub_mat_info_gl[0], sub_mat_info_gl[1], sep='\n')
-    print('\n')
-    print(sub_mat_info_lc[0], sub_mat_info_lc[1], sep='\n')
-    print('\n')
+    option = sys.argv[1]  # -l or -g
+    sub_mat_info = SubMatParser(sys.argv[2])  # BLOSUM62 or PAM250
+    sequences = InputParser(sys.argv[3])
 
-    # Test Global Alignment
-    aligner_gl = Aligner('PLEASANTLY', 'MEANLY', sub_mat_info_gl, 5)
-    aligned_gl = aligner_gl.GlobalAligner()
-    print(aligned_gl[0], '\n'.join(aligned_gl[1]), sep='\n')
-    print('\n')
+    aligner = Aligner(sequences[0], sequences[1], sub_mat_info, 5)
 
-'''
-    # Test Local Alignment
-    aligner_lc = Aligner('MEANLY', 'PENALTY', sub_mat_info_lc, 5)
-    aligned_lc = aligner_lc.LocalAligner()
-    print(aligned_lc[0], '\n'.join(aligned_lc[1]), sep='\n')
-'''
+    if 'g' in option:
+        aligned = aligner.GlobalAligner()
+
+    elif 'l' in option:
+        aligned = aligner.LocalAligner()
+
+    print(aligned[0], '\n'.join(aligned[1]), sep='\n')
