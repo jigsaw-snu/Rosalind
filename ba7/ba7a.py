@@ -53,14 +53,18 @@ def InputParser(input_path: str) -> list:
     <FindPathBFS>
 '''
 def FindPathBFS(src: int, dst: int, node_info: list) -> list:
-    path_history = deque([])  # save all path history in here
+    path_history = deque([[src]])  # save all path history in here
 
     while path_history:
         #print(path_history)
+        
         # path_history is a queue, since we want to perform BFS!
         cur_path = path_history.popleft()  # get first path from path_history
         #print(cur_path)
         last_node = cur_path[-1]  # get last node of path
+        
+        if last_node in cur_path[:-1]:
+            continue
 
         if last_node == dst:  # dst found!
             return cur_path
@@ -90,7 +94,7 @@ def GetDistanceMatrix(node_info: list) -> None:
             
             weight_sum = 0
             node_path = FindPathBFS(node_info[3][i], node_info[3][j], node_info)
-            print('Path', i, 'to', j, ':', node_path)
+            #print('Path', i, 'to', j, ':', node_path)
 
             for k in range(len(node_path)-1):
                 weight_sum += node_info[2][(node_path[k], node_path[k+1])]
@@ -99,11 +103,11 @@ def GetDistanceMatrix(node_info: list) -> None:
     
     ret_matrix = [' '.join(ret_matrix[i]) for i in range(node_info[0])]
 
-    print('\n'.join(ret_matrix))
+    print('\n', '\n'.join(ret_matrix), sep='')
 
 
 if __name__ == '__main__':
     params = InputParser(sys.argv[1])
-    #print(params[0], params[1], params[2], params[3], '\n', sep='\n')
+    #print(params[0], params[1], params[2], params[3], '', sep='\n')
 
     GetDistanceMatrix(params)
