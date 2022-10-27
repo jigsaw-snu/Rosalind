@@ -20,7 +20,7 @@ def InputParser(file_path: str) -> dict:
         params['k'], params['dim'] = list(map(int, file.readline().rstrip().split()))
 
         params['data'] = list()
-        
+
         while True:
             line = list(map(float, file.readline().rstrip().split()))
             
@@ -30,7 +30,7 @@ def InputParser(file_path: str) -> dict:
             params['data'].append(line)
         
         params['data'] = np.array(params['data'])
-    
+
     return params
 
 
@@ -63,12 +63,12 @@ def GetDistance(pt1: np.array, pt2: np.array) -> float:
     return np.sqrt(np.array([x**2 for x in pt1-pt2]).sum())
 
 
-def FindMaxPoint(data: np.array, start: int) -> int:
+def FindMaxPoint(data: np.array, center_idx: list) -> int:
     """Find farthest point from given point
 
     Args:
         data (np.array): bag of data points
-        start (int): index of data point. calculate distance from this point
+        center_idx (int): indices of data point. calculate distance with points from this list
 
     Returns:
         int: index of farthest point
@@ -77,14 +77,12 @@ def FindMaxPoint(data: np.array, start: int) -> int:
     max_idx = 0
     max_dist = 0
     
-    for i in range(len(data)):
-        dist = GetDistance(data[start], data[i])
+    dist_to_center = [np.inf for _ in range(len(data))]
 
-        if dist > max_dist:
-            max_dist = dist
-            max_idx = i
+    for i in range(len(data)):
+        dist_to_center[i] = np.max([GetDistance(data[i], data[x]) for x in center_idx])
     
-    return max_idx
+    return dist_to_center.index(np.max(dist_to_center))
 
 
 def FarthestFirstTraversal(data: np.array, k: int, dim: int) -> list:
@@ -99,24 +97,23 @@ def FarthestFirstTraversal(data: np.array, k: int, dim: int) -> list:
     """
 
     # annotate initial cluster as 0 for all data points
-    start_idx = 0  # index of data_raw
-    centers = [tuple(map(str, data[start_idx]))]  # result object
-    clusters = [start_idx for _ in range(len(data))]
+    center_idx = [0]
+    centers = [tuple(map(str, data[0]))]  # result object
+    #clusters = [start_idx for _ in range(len(data))]
     data_cur = copy.deepcopy(data)
 
     for _ in range(k-1):
+        print(centers)
         print('data shape :', data_cur.shape)
-        far_idx = FindMaxPoint(data_cur, start_idx)  # index from current data
+        far_idx = FindMaxPoint(data_cur, center_idx)  # index from current data
         far_val = data_cur[far_idx]
-        start_val = data_cur[start_idx]
+
+        #far_idx_raw = GetRawIndex(far_idx, data_cur, data)  # index from raw data
         
-        start_idx_raw = GetRawIndex(start_idx, data_cur, data)
-        far_idx_raw = GetRawIndex(far_idx, data_cur, data)  # index from raw data
-        
-        print('start_idx :', start_idx, '    start_val :', start_val)
-        print('far_idx :', far_idx, '    far_val :', far_val, '    far_idx_raw :', far_idx_raw)
+        print('far_idx :', far_idx, '    far_val :', far_val)
         #print()
         
+        center_idx.append(far_idx)
         centers.append(tuple(map(str, data_cur[far_idx])))
     
         # reallocate cluster to each data point
@@ -129,14 +126,10 @@ def FarthestFirstTraversal(data: np.array, k: int, dim: int) -> list:
                 clusters[GetRawIndex(i, data_cur, data)] = far_idx_raw
         '''
 
-        print(data[345], clusters[346], sep=' -> ')
-        print(data[210], clusters[211], sep=' -> ')
         print()
         #data_cur = data[[x for x, y in enumerate(clusters) if y == far_idx_raw]]
-        data_cur = data[[x for x in range(len(data)) if x != start_idx_raw]]
-        
-        # must recalculate index of previous farthest point
-        start_idx = GetRawIndex(far_idx_raw, data, data_cur)
+        data_cur = data[[x for x in range(len(data)) if x not in center_idx]]
+
 
     # printing
     for i in range(k):
